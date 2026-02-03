@@ -36,6 +36,9 @@ def veriyi_getir():
             if len(df.columns) >= 2:
                 df = df.iloc[:, :2]
                 df.columns = ["Kitap Adı", "Yazar"]
+                # Veri tiplerini string yapalım ki karşılaştırma hatası olmasın
+                df["Kitap Adı"] = df["Kitap Adı"].astype(str)
+                df["Yazar"] = df["Yazar"].astype(str)
             else:
                 df = pd.DataFrame(columns=["Kitap Adı", "Yazar"])
         except:
@@ -109,7 +112,6 @@ def fotograftan_kitaplari_bul(image):
 
 # --- ARAYÜZ ---
 
-# Session State Başlatma (Hafıza)
 if 'kesfedilen_kitaplar' not in st.session_state:
     st.session_state.kesfedilen_kitaplar = None
 
@@ -121,7 +123,6 @@ with tab1:
     
     arama = st.text_input("Kitap Ara", placeholder="Kitap adı veya yazar...")
     if arama:
-        # Türkçe karakter duyarlı basit arama (küçük harfe çevirerek)
         sonuc = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(arama.lower(), case=False).any(), axis=1)]
         st.dataframe(sonuc, use_container_width=True, hide_index=True)
     else:
@@ -133,48 +134,83 @@ with tab2:
     if mode == "Fotoğrafla Tara":
         uploaded_file = st.file_uploader("Raf Fotoğrafı", type=["jpg", "png", "jpeg"])
         
-        # 1. Aşama: TARA Butonu
+        # 1. Aşama: TARA
         if uploaded_file:
             if st.button("Fotoğrafı Tara 📸"):
                 image = Image.open(uploaded_file)
                 st.image(image, caption='Analiz Ediliyor...', width=300)
-                
-                # Sonuçları hafızaya atıyoruz
                 st.session_state.kesfedilen_kitaplar = fotograftan_kitaplari_bul(image)
 
-        # 2. Aşama: ONAY Ekranı (Hafızada veri varsa görünür)
+        # 2. Aşama: KONTROL VE KAYIT
         if st.session_state.kesfedilen_kitaplar is not None and not st.session_state.kesfedilen_kitaplar.empty:
-            st.info("Aşağıdaki kitaplar bulundu. Kaydetmek istiyor musun?")
+            st.info("Bulunan kitapları kontrol et. Kaydet dersen sadece YENİ olanlar eklenecek.")
             
-            # Düzenlenebilir tablo (Opsiyonel: İstersen hatalı ismi düzeltebilirsin)
             edited_df = st.data_editor(st.session_state.kesfedilen_kitaplar, num_rows="dynamic", hide_index=True)
             
             col_kaydet, col_iptal = st.columns(2)
             
-            # KAYDET Butonu
-            if col_kaydet.button("✅ Evet, Kaydet", type="primary"):
+            if col_kaydet.button("✅ Akıllı Kayıt (Tekrarları Önle)", type="primary"):
                 df_mevcut = veriyi_getir()
-                df_son = pd.concat([df_mevcut, edited_df], ignore_index=True)
                 
-                if veriyi_kaydet(df_son):
-                    st.balloons()
-                    st.success(f"{len(edited_df)} kitap veritabanına eklendi!")
-                    # Hafızayı temizle
-                    st.session_state.kesfedilen_kitaplar = None
-                    st.rerun()
+                # --- AKILLI DUPLICATE KONTROLÜ BAŞLANGICI ---
+                
+                # Mevcut kitapları karşılaştırma için küçük harfe çevirip listeye alalım
+                # Set kullanarak işlemi hızlandırıyoruz
+                mevcut_kitaplar_seti = set(df_mevcut["Kitap Adı"].astype(str).str.lower().str.strip())
+                
+                eklenecekler = []
+                zaten_var = []
+                
+                # Kullanıcının onayladığı listeyi tek tek kontrol et
+                for index, row in edited_df.iterrows():
+                    kitap_adi_ham = str(row["Kitap Adı"]).strip()
+                    kitap_adi_kontrol = kitap_adi_ham.lower()
+                    
+                    if kitap_adi_kontrol in mevcut_kitaplar_seti:
+                        zaten_var.append(kitap_adi_ham)
+                    else:
+                        eklenecekler.append(row)
+                
+                # --- AKILLI DUPLICATE KONTROLÜ BİTİŞİ ---
+
+                if eklenecekler:
+                    df_yeni = pd.DataFrame(eklenecekler)
+                    df_son = pd.concat([df_mevcut, df_yeni], ignore_index=True)
+                    
+                    if veriyi_kaydet(df_son):
+                        st.balloons()
+                        mesaj = f"✅ {len(df_yeni)} yeni kitap eklendi!"
+                        if zaten_var:
+                            mesaj += f"\n\n⚠️ Şu kitaplar zaten vardı, pas geçildi: {', '.join(zaten_var)}"
+                        st.success(mesaj)
+                        st.session_state.kesfedilen_kitaplar = None
+                        st.rerun()
+                    else:
+                        st.error("Kaydedilemedi!")
                 else:
-                    st.error("Kaydedilemedi! Keenetic yazma iznini kontrol et.")
-            
-            # İPTAL Butonu
-            if col_iptal.button("❌ Vazgeç / Temizle"):
+                    st.warning(f"⚠️ Yeni kitap bulunamadı! Taradığın kitapların hepsi ({', '.join(zaten_var)}) zaten listede var.")
+                    st.session_state.kesfedilen_kitaplar = None # Listeyi temizle ki ekran boşalsın
+                    
+            if col_iptal.button("❌ İptal"):
                 st.session_state.kesfedilen_kitaplar = None
                 st.rerun()
 
-    else: # Elle Ekle Modu
+    else: # Elle Ekle
         col1, col2 = st.columns(2)
         with col1: ad = st.text_input("Kitap Adı")
         with col2: yazar = st.text_input("Yazar")
         
         if st.button("Listeye Ekle"):
             if ad and yazar:
-                df_mev
+                df_mevcut = veriyi_getir()
+                
+                # Elle eklemede de kontrol yapalım
+                if df_mevcut["Kitap Adı"].astype(str).str.lower().str.strip().isin([ad.lower().strip()]).any():
+                    st.error(f"Bu kitap ({ad}) zaten listede var!")
+                else:
+                    yeni = pd.DataFrame([{"Kitap Adı": ad, "Yazar": yazar}])
+                    df_son = pd.concat([df_mevcut, yeni], ignore_index=True)
+                    
+                    if veriyi_kaydet(df_son):
+                        st.success(f"✅ {ad} eklendi!")
+                        st.rerun()
