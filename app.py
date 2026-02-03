@@ -17,7 +17,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # Model Ayarı
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-3.0-flash')
 
 # --- FONKSİYONLAR ---
 
@@ -123,6 +123,7 @@ with tab1:
     
     arama = st.text_input("Kitap Ara", placeholder="Kitap adı veya yazar...")
     if arama:
+        # Türkçe karakter duyarlı basit arama (küçük harfe çevirerek)
         sonuc = df[df.apply(lambda row: row.astype(str).str.lower().str.contains(arama.lower(), case=False).any(), axis=1)]
         st.dataframe(sonuc, use_container_width=True, hide_index=True)
     else:
@@ -145,6 +146,7 @@ with tab2:
         if st.session_state.kesfedilen_kitaplar is not None and not st.session_state.kesfedilen_kitaplar.empty:
             st.info("Bulunan kitapları kontrol et. Kaydet dersen sadece YENİ olanlar eklenecek.")
             
+            # Tabloyu düzenlenebilir yapıyoruz
             edited_df = st.data_editor(st.session_state.kesfedilen_kitaplar, num_rows="dynamic", hide_index=True)
             
             col_kaydet, col_iptal = st.columns(2)
@@ -154,8 +156,8 @@ with tab2:
                 
                 # --- AKILLI DUPLICATE KONTROLÜ BAŞLANGICI ---
                 
-                # Mevcut kitapları karşılaştırma için küçük harfe çevirip listeye alalım
-                # Set kullanarak işlemi hızlandırıyoruz
+                # Mevcut kitapları karşılaştırma için küçük harfe çevirip bir "set"e alalım (Hız için)
+                # Örn: "dune", "nutuk" gibi
                 mevcut_kitaplar_seti = set(df_mevcut["Kitap Adı"].astype(str).str.lower().str.strip())
                 
                 eklenecekler = []
@@ -175,42 +177,4 @@ with tab2:
 
                 if eklenecekler:
                     df_yeni = pd.DataFrame(eklenecekler)
-                    df_son = pd.concat([df_mevcut, df_yeni], ignore_index=True)
-                    
-                    if veriyi_kaydet(df_son):
-                        st.balloons()
-                        mesaj = f"✅ {len(df_yeni)} yeni kitap eklendi!"
-                        if zaten_var:
-                            mesaj += f"\n\n⚠️ Şu kitaplar zaten vardı, pas geçildi: {', '.join(zaten_var)}"
-                        st.success(mesaj)
-                        st.session_state.kesfedilen_kitaplar = None
-                        st.rerun()
-                    else:
-                        st.error("Kaydedilemedi!")
-                else:
-                    st.warning(f"⚠️ Yeni kitap bulunamadı! Taradığın kitapların hepsi ({', '.join(zaten_var)}) zaten listede var.")
-                    st.session_state.kesfedilen_kitaplar = None # Listeyi temizle ki ekran boşalsın
-                    
-            if col_iptal.button("❌ İptal"):
-                st.session_state.kesfedilen_kitaplar = None
-                st.rerun()
-
-    else: # Elle Ekle
-        col1, col2 = st.columns(2)
-        with col1: ad = st.text_input("Kitap Adı")
-        with col2: yazar = st.text_input("Yazar")
-        
-        if st.button("Listeye Ekle"):
-            if ad and yazar:
-                df_mevcut = veriyi_getir()
-                
-                # Elle eklemede de kontrol yapalım
-                if df_mevcut["Kitap Adı"].astype(str).str.lower().str.strip().isin([ad.lower().strip()]).any():
-                    st.error(f"Bu kitap ({ad}) zaten listede var!")
-                else:
-                    yeni = pd.DataFrame([{"Kitap Adı": ad, "Yazar": yazar}])
-                    df_son = pd.concat([df_mevcut, yeni], ignore_index=True)
-                    
-                    if veriyi_kaydet(df_son):
-                        st.success(f"✅ {ad} eklendi!")
-                        st.rerun()
+                    df_son = pd.concat([df_mevcut, df_yeni],
