@@ -18,7 +18,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # AI Ayarı (Flash modeli görsel de okuyabilir)
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- FONKSİYONLAR ---
 
@@ -154,4 +154,5 @@ if arama:
 else:
     st.write(f"Toplam Kitap: **{len(df)}**")
     st.dataframe(df, use_container_width=True)
+
 
