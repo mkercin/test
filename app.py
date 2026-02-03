@@ -26,7 +26,7 @@ def veriyi_getir():
         response = requests.get(KEENETIC_URL, auth=(WEBDAV_USER, WEBDAV_PASS))
         response.raise_for_status() # Hata varsa durdur
         # CSV'yi Pandas DataFrame'e çevir
-        df = pd.read_csv(io.StringIO(response.content.decode('utf-8')))
+        df = pd.read_csv(io.StringIO(response.content.decode('utf-8')), sep=';')
         return df
     except Exception as e:
         st.error(f"Veri çekilemedi: {e}")
@@ -43,7 +43,7 @@ def yapay_zekaya_sor(df, soru):
     prompt = f"""
     Aşağıda kütüphanemdeki kitapların listesi var.
     Kullanıcı sana bir kitap soracak. Listeye bak ve şu kurallara göre cevap ver:
-    1. Kitap listede kesinlikle varsa "VAR" de ve hangi rafta/konumda olduğunu söyle.
+    1. Kitap listede kesinlikle varsa "VAR" de.
     2. Kitap yoksa ama yazarın başka kitabı varsa onu öner.
     3. Hiçbiri yoksa nazikçe "Maalesef evde yok" de.
     4. Kullanıcı kitap sormuyorsa (örn: "kaç kitap var"), listeye göre analiz yap.
@@ -82,4 +82,5 @@ if df is not None:
         st.table(basit_arama)
 
 else:
+
     st.warning("Keenetic sunucusuna ulaşılamadı. Modemin açık olduğundan emin ol.")
