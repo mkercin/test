@@ -177,4 +177,48 @@ with tab2:
 
                 if eklenecekler:
                     df_yeni = pd.DataFrame(eklenecekler)
-                    df_son = pd.concat([df_mevcut, df_yeni],
+                    df_son = pd.concat([df_mevcut, df_yeni], ignore_index=True)
+                    
+                    if veriyi_kaydet(df_son):
+                        st.balloons()
+                        
+                        # Kullanıcıya detaylı rapor verelim
+                        mesaj = f"✅ {len(df_yeni)} yeni kitap eklendi!"
+                        if zaten_var:
+                            mesaj += f"\n\n⚠️ Şu kitaplar zaten kütüphanende olduğu için atlandı: {', '.join(zaten_var)}"
+                        
+                        st.success(mesaj)
+                        st.session_state.kesfedilen_kitaplar = None
+                        st.rerun()
+                    else:
+                        st.error("Kaydedilemedi!")
+                else:
+                    st.warning(f"⚠️ Yeni kitap bulunamadı! Taradığın kitapların hepsi ({', '.join(zaten_var)}) zaten listede var.")
+                    st.session_state.kesfedilen_kitaplar = None # Listeyi temizle ki ekran boşalsın
+                    st.rerun()
+                    
+            if col_iptal.button("❌ İptal"):
+                st.session_state.kesfedilen_kitaplar = None
+                st.rerun()
+
+    else: # Elle Ekle
+        col1, col2 = st.columns(2)
+        with col1: ad = st.text_input("Kitap Adı")
+        with col2: yazar = st.text_input("Yazar")
+        
+        if st.button("Listeye Ekle"):
+            if ad and yazar:
+                df_mevcut = veriyi_getir()
+                
+                # Elle eklemede de kontrol yapalım
+                kontrol_seti = set(df_mevcut["Kitap Adı"].astype(str).str.lower().str.strip())
+                
+                if ad.lower().strip() in kontrol_seti:
+                    st.error(f"Bu kitap ({ad}) zaten listede var!")
+                else:
+                    yeni = pd.DataFrame([{"Kitap Adı": ad, "Yazar": yazar}])
+                    df_son = pd.concat([df_mevcut, yeni], ignore_index=True)
+                    
+                    if veriyi_kaydet(df_son):
+                        st.success(f"✅ {ad} eklendi!")
+                        st.rerun()
