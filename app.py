@@ -45,6 +45,18 @@ def veriyi_kaydet(df):
 
 def fotograftan_kitaplari_bul(image, konum):
     """Raf fotoğrafını AI'ya gönderip CSV formatında liste ister"""
+    
+    # --- OPTİMİZASYON BAŞLANGICI ---
+    # 1. Görseli RGB formatına zorla (PNG şeffaflık sorunlarını çözer)
+    if image.mode != 'RGB':
+        image = image.convert('RGB')
+        
+    # 2. Görseli Küçült (Thumbnail)
+    # Telefon fotoları 4000px olabilir, bunu 1024px'e düşürelim.
+    # Bu işlem kaliteyi bozmaz ama dosya boyutunu %90 azaltır ve HIZLANDIRIR.
+    image.thumbnail((1024, 1024)) 
+    # --- OPTİMİZASYON BİTİŞİ ---
+
     prompt = """
     Bu bir kitaplık rafı fotoğrafı. Fotoğraftaki kitapların sırtlarını oku.
     Bana SADECE aşağıdaki CSV formatında bir liste ver. Başka hiçbir açıklama yazma.
@@ -57,13 +69,18 @@ def fotograftan_kitaplari_bul(image, konum):
     Dune;Frank Herbert;Salon Raf 1
     Nutuk;Atatürk;Salon Raf 1
     """
-    # Konumu prompta ekleyelim ki AI otomatik doldursun
     final_prompt = prompt.replace("Salon Raf 1", konum)
     
-    with st.spinner('Yapay zeka kitap sırtlarını okuyor... 🧐'):
-        response = model.generate_content([final_prompt, image])
-        return response.text.strip()
-
+    try:
+        with st.spinner('Yapay zeka fotoğrafı analiz ediyor (Bu 5-10 sn sürebilir)... 🧐'):
+            # Streamlit hatasını önlemek için güvenli çağrı
+            response = model.generate_content([final_prompt, image])
+            return response.text.strip()
+            
+    except Exception as e:
+        # Hatayı ekrana bas ki ne olduğunu görelim
+        st.error(f"Bağlantı Hatası: {e}")
+        return ""
 # --- ARAYÜZ (UI) ---
 
 # Yan Menü (Ekleme İşlemleri)
@@ -137,3 +154,4 @@ if arama:
 else:
     st.write(f"Toplam Kitap: **{len(df)}**")
     st.dataframe(df, use_container_width=True)
+
