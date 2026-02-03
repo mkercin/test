@@ -17,7 +17,7 @@ GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 
 # Model Ayarı
 genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-3.0-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 # --- FONKSİYONLAR ---
 
@@ -222,3 +222,4 @@ with tab2:
                     if veriyi_kaydet(df_son):
                         st.success(f"✅ {ad} eklendi!")
                         st.rerun()
+
