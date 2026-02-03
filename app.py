@@ -35,7 +35,7 @@ def veriyi_getir():
 # 2. Gemini Yapay Zeka Sorgusu
 def yapay_zekaya_sor(df, soru):
     genai.configure(api_key=GOOGLE_API_KEY)
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
     # Veriyi metne çevirip prompte ekliyoruz
     liste_metni = df.to_string(index=False)
@@ -84,3 +84,4 @@ if df is not None:
 else:
 
     st.warning("Keenetic sunucusuna ulaşılamadı. Modemin açık olduğundan emin ol.")
+
